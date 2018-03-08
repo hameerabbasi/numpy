@@ -123,11 +123,12 @@ normalize_reduce_args(PyUFuncObject *ufunc, PyObject *args,
     npy_intp nargs = PyTuple_GET_SIZE(args);
     npy_intp i;
     PyObject *obj;
-    static char *kwlist[] = {"array", "axis", "dtype", "out", "keepdims"};
+    static char *kwlist[] = {"array", "axis", "dtype", "out", "keepdims",
+        "initializer"};
 
-    if (nargs < 1 || nargs > 5) {
+    if (nargs < 1 || nargs > 6) {
         PyErr_Format(PyExc_TypeError,
-                     "ufunc.reduce() takes from 1 to 5 positional "
+                     "ufunc.reduce() takes from 1 to 6 positional "
                      "arguments but %"NPY_INTP_FMT" were given", nargs);
         return -1;
     }

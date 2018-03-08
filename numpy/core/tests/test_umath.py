@@ -1776,6 +1776,8 @@ class TestSpecialMethods(object):
         assert_equal(res[4], {'axis': 0, 'keepdims': True})
         res = np.multiply.reduce(a, None, out=(None,), dtype=None)
         assert_equal(res[4], {'axis': None, 'dtype': None})
+        res = np.multiply.reduce(a, 0, None, None, False, 2)
+        assert_equal(res[4], {'axis': 0, 'dtype': None, 'keepdims': False, 'initializer': 2})
 
         # reduce, wrong args
         assert_raises(ValueError, np.multiply.reduce, a, out=())

@@ -2831,14 +2831,15 @@ finish_loop:
  */
 static PyArrayObject *
 PyUFunc_Reduce(PyUFuncObject *ufunc, PyArrayObject *arr, PyArrayObject *out,
-        int naxes, int *axes, PyArray_Descr *odtype, int keepdims)
+        int naxes, int *axes, PyArray_Descr *odtype, int keepdims,
+        PyObject *initializer)
 {
     int iaxes, ndim;
     npy_bool reorderable;
     npy_bool axis_flags[NPY_MAXDIMS];
     PyArray_Descr *dtype;
     PyArrayObject *result;
-    PyObject *identity = NULL;
+    PyObject *identity;
     const char *ufunc_name = ufunc_get_name_cstr(ufunc);
     /* These parameters come from a TLS global */
     int buffersize = 0, errormask = 0;
@@ -2868,19 +2869,29 @@ PyUFunc_Reduce(PyUFuncObject *ufunc, PyArrayObject *arr, PyArrayObject *out,
     if (identity == NULL) {
         return NULL;
     }
+
+    /* Get the initializer */
+    if (initializer == NULL) {
+        initializer = identity;
+    }
+    else {
+        Py_DECREF(identity);
+        Py_INCREF(initializer);  /* match the reference count in the if above */
+    }
+
     /*
      * The identity for a dynamic dtype like
      * object arrays can't be used in general
      */
-    if (identity != Py_None && PyArray_ISOBJECT(arr) && PyArray_SIZE(arr) != 0) {
-        Py_DECREF(identity);
-        identity = Py_None;
-        Py_INCREF(identity);
+    if (initializer != Py_None && PyArray_ISOBJECT(arr) && PyArray_SIZE(arr) != 0) {
+        Py_DECREF(initializer);
+        initializer = Py_None;
+        Py_INCREF(initializer);
     }
 
     /* Get the reduction dtype */
     if (reduce_type_resolver(ufunc, arr, odtype, &dtype) < 0) {
-        Py_DECREF(identity);
+        Py_DECREF(initializer);
         return NULL;
     }
 
@@ -2888,12 +2899,12 @@ PyUFunc_Reduce(PyUFuncObject *ufunc, PyArrayObject *arr, PyArrayObject *out,
                                    NPY_UNSAFE_CASTING,
                                    axis_flags, reorderable,
                                    keepdims, 0,
-                                   identity,
+                                   initializer,
                                    reduce_loop,
                                    ufunc, buffersize, ufunc_name, errormask);
 
     Py_DECREF(dtype);
-    Py_DECREF(identity);
+    Py_DECREF(initializer);
     return result;
 }
 
@@ -3648,8 +3659,9 @@ PyUFunc_GenericReduction(PyUFuncObject *ufunc, PyObject *args,
     PyArray_Descr *otype = NULL;
     PyArrayObject *out = NULL;
     int keepdims = 0;
+    PyObject *initializer = NULL;
     static char *reduce_kwlist[] = {
-            "array", "axis", "dtype", "out", "keepdims", NULL};
+            "array", "axis", "dtype", "out", "keepdims", "initializer", NULL};
     static char *accumulate_kwlist[] = {
             "array", "axis", "dtype", "out", NULL};
     static char *reduceat_kwlist[] = {
@@ -3721,13 +3733,13 @@ PyUFunc_GenericReduction(PyUFuncObject *ufunc, PyObject *args,
         }
     }
     else {
-        if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|OO&O&i:reduce",
+        if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|OO&O&iO:reduce",
                                         reduce_kwlist,
                                         &op,
                                         &axes_in,
                                         PyArray_DescrConverter2, &otype,
                                         PyArray_OutputConverter, &out,
-                                        &keepdims)) {
+                                        &keepdims, &initializer)) {
             goto fail;
         }
     }
@@ -3858,7 +3870,7 @@ PyUFunc_GenericReduction(PyUFuncObject *ufunc, PyObject *args,
     switch(operation) {
     case UFUNC_REDUCE:
         ret = PyUFunc_Reduce(ufunc, mp, out, naxes, axes,
-                                          otype, keepdims);
+                                          otype, keepdims, initializer);
         break;
     case UFUNC_ACCUMULATE:
         if (naxes != 1) {

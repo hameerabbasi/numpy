@@ -493,6 +493,11 @@ class TestUfunc(object):
             d += d
             assert_almost_equal(d, 2. + 2j)
 
+    def test_sum_initializer(self):
+        assert_equal(np.sum([3], initializer=2), 5)
+        assert_almost_equal(np.sum(np.ones((2, 3, 5)), axis=(0, 2), initializer=2),
+                            [12., 12., 12.])
+
     def test_inner1d(self):
         a = np.arange(6).reshape((2, 3))
         assert_array_equal(umt.inner1d(a, a), np.sum(a*a, axis=-1))
@@ -872,7 +877,7 @@ class TestUfunc(object):
         assert_equal(np.sqrt(a, where=m), [1])
 
     def check_identityless_reduction(self, a):
-        # np.minimum.reduce is a identityless reduction
+        # np.minimum.reduce is an identityless reduction
 
         # Verify that it sees the zero at various positions
         a[...] = 1
@@ -940,6 +945,27 @@ class TestUfunc(object):
         a.shape = (3, 4, 5)
         a = a[1:, 1:, 1:]
         self.check_identityless_reduction(a)
+
+    def test_initializer_reduction(self):
+        # np.minimum.reduce is an identityless reduction
+
+        # For cases like np.maximum(np.abs(...), initializer=0)
+        # More generally, a supremum over non-negative numbers.
+        assert_equal(np.maximum.reduce([], initializer=0), 0)
+
+        # For cases like reduction of an empty array over the reals.
+        assert_equal(np.minimum.reduce([], initializer=np.inf), np.inf)
+        assert_equal(np.maximum.reduce([], initializer=-np.inf), -np.inf)
+
+        # Rendom tests
+        assert_equal(np.minimum.reduce([5], initializer=4), 4)
+        assert_equal(np.maximum.reduce([4], initializer=5), 5)
+
+        with assert_raises(ValueError):
+            np.minimum.reduce([])
+
+        with assert_raises(ValueError):
+            np.minimum.reduce([], initializer=None)
 
     def test_identityless_reduction_nonreorderable(self):
         a = np.array([[8.0, 2.0, 2.0], [1.0, 0.5, 0.25]])
@@ -1280,15 +1306,18 @@ class TestUfunc(object):
         assert_equal(f(d, 0, None, None), r)
         assert_equal(f(d, 0, None, None, keepdims=False), r)
         assert_equal(f(d, 0, None, None, True), r.reshape((1,) + r.shape))
+        assert_equal(f(d, 0, None, None, False, 0), r)
+        assert_equal(f(d, 0, None, None, False, initializer=0), r)
         # multiple keywords
         assert_equal(f(d, axis=0, dtype=None, out=None, keepdims=False), r)
         assert_equal(f(d, 0, dtype=None, out=None, keepdims=False), r)
         assert_equal(f(d, 0, None, out=None, keepdims=False), r)
+        assert_equal(f(d, 0, None, out=None, keepdims=False, initializer=0), r)
 
         # too little
         assert_raises(TypeError, f)
         # too much
-        assert_raises(TypeError, f, d, 0, None, None, False, 1)
+        assert_raises(TypeError, f, d, 0, None, None, False, 0, 1)
         # invalid axis
         assert_raises(TypeError, f, d, "invalid")
         assert_raises(TypeError, f, d, axis="invalid")
