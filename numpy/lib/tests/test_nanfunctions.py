@@ -83,6 +83,17 @@ class TestNanFunctions_MinMax(object):
             res = nf(_ndat, axis=1)
             assert_almost_equal(res, tgt)
 
+    def test_initializer(self):
+        arr1 = np.array([np.nan] * 9).reshape(3, 3)
+        arr2 = arr1.copy()
+        arr2[1] = 1
+
+        assert_equal(np.nanmin(arr1, initializer=5), 5.0)
+        assert_equal(np.nanmax(arr1, initializer=6), 6.0)
+
+        assert_equal(np.nanmin(arr2, initializer=5), 1.0)
+        assert_equal(np.nanmax(arr2, initializer=6), 6.0)
+
     def test_allnans(self):
         mat = np.array([np.nan]*9).reshape(3, 3)
         for f in self.nanfuncs:

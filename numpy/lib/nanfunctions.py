@@ -25,7 +25,6 @@ import warnings
 import numpy as np
 from numpy.lib import function_base
 
-
 __all__ = [
     'nansum', 'nanmax', 'nanmin', 'nanargmax', 'nanargmin', 'nanmean',
     'nanmedian', 'nanpercentile', 'nanvar', 'nanstd', 'nanprod',
@@ -187,7 +186,7 @@ def _divide_by_count(a, b, out=None):
                 return np.divide(a, b, out=out, casting='unsafe')
 
 
-def nanmin(a, axis=None, out=None, keepdims=np._NoValue):
+def nanmin(a, axis=None, out=None, keepdims=np._NoValue, initializer=np._NoValue):
     """
     Return minimum of an array or minimum along an axis, ignoring any NaNs.
     When all-NaN slices are encountered a ``RuntimeWarning`` is raised and
@@ -219,6 +218,12 @@ def nanmin(a, axis=None, out=None, keepdims=np._NoValue):
         does not implement `keepdims` any exceptions will be raised.
 
         .. versionadded:: 1.8.0
+    initializer : scalar, optional
+        The maximum value of an output element. Must be present to allow
+        computation on empty slice. If the initializer is given, no warning is
+        issued for an all-NaN slice. See `~numpy.ufunc.reduce` for details.
+
+        .. versionadded:: 1.15.0
 
     Returns
     -------
@@ -274,11 +279,15 @@ def nanmin(a, axis=None, out=None, keepdims=np._NoValue):
     kwargs = {}
     if keepdims is not np._NoValue:
         kwargs['keepdims'] = keepdims
+
+    if initializer is not np._NoValue:
+        kwargs['initializer'] = initializer
+
     if type(a) is np.ndarray and a.dtype != np.object_:
         # Fast, but not safe for subclasses of ndarray, or object arrays,
         # which do not implement isnan (gh-9009), or fmin correctly (gh-8975)
         res = np.fmin.reduce(a, axis=axis, out=out, **kwargs)
-        if np.isnan(res).any():
+        if initializer is np._NoValue and np.isnan(res).any():
             warnings.warn("All-NaN slice encountered", RuntimeWarning, stacklevel=2)
     else:
         # Slow, but safe for subclasses of ndarray
@@ -291,11 +300,12 @@ def nanmin(a, axis=None, out=None, keepdims=np._NoValue):
         mask = np.all(mask, axis=axis, **kwargs)
         if np.any(mask):
             res = _copyto(res, np.nan, mask)
-            warnings.warn("All-NaN axis encountered", RuntimeWarning, stacklevel=2)
+            if initializer is np._NoValue:
+                warnings.warn("All-NaN axis encountered", RuntimeWarning, stacklevel=2)
     return res
 
 
-def nanmax(a, axis=None, out=None, keepdims=np._NoValue):
+def nanmax(a, axis=None, out=None, keepdims=np._NoValue, initializer=np._NoValue):
     """
     Return the maximum of an array or maximum along an axis, ignoring any
     NaNs.  When all-NaN slices are encountered a ``RuntimeWarning`` is
@@ -327,6 +337,12 @@ def nanmax(a, axis=None, out=None, keepdims=np._NoValue):
         does not implement `keepdims` any exceptions will be raised.
 
         .. versionadded:: 1.8.0
+    initializer : scalar, optional
+        The minimum value of an output element. Must be present to allow
+        computation on empty slice. If the initializer is given, no warning is
+        issued for an all-NaN slice. See `~numpy.ufunc.reduce` for details.
+
+        .. versionadded:: 1.15.0
 
     Returns
     -------
@@ -377,16 +393,20 @@ def nanmax(a, axis=None, out=None, keepdims=np._NoValue):
     2.0
     >>> np.nanmax([1, 2, np.nan, np.inf])
     inf
-
     """
     kwargs = {}
+
     if keepdims is not np._NoValue:
         kwargs['keepdims'] = keepdims
+
+    if initializer is not np._NoValue:
+        kwargs['initializer'] = initializer
+
     if type(a) is np.ndarray and a.dtype != np.object_:
         # Fast, but not safe for subclasses of ndarray, or object arrays,
         # which do not implement isnan (gh-9009), or fmax correctly (gh-8975)
         res = np.fmax.reduce(a, axis=axis, out=out, **kwargs)
-        if np.isnan(res).any():
+        if initializer is np._NoValue and np.isnan(res).any():
             warnings.warn("All-NaN slice encountered", RuntimeWarning, stacklevel=2)
     else:
         # Slow, but safe for subclasses of ndarray
@@ -399,7 +419,8 @@ def nanmax(a, axis=None, out=None, keepdims=np._NoValue):
         mask = np.all(mask, axis=axis, **kwargs)
         if np.any(mask):
             res = _copyto(res, np.nan, mask)
-            warnings.warn("All-NaN axis encountered", RuntimeWarning, stacklevel=2)
+            if initializer is np._NoValue:
+                warnings.warn("All-NaN axis encountered", RuntimeWarning, stacklevel=2)
     return res
 
 
@@ -492,7 +513,7 @@ def nanargmax(a, axis=None):
     return res
 
 
-def nansum(a, axis=None, dtype=None, out=None, keepdims=np._NoValue):
+def nansum(a, axis=None, dtype=None, out=None, keepdims=np._NoValue, initializer=np._NoValue):
     """
     Return the sum of array elements over a given axis treating Not a
     Numbers (NaNs) as zero.
@@ -537,6 +558,10 @@ def nansum(a, axis=None, dtype=None, out=None, keepdims=np._NoValue):
         does not implement `keepdims` any exceptions will be raised.
 
         .. versionadded:: 1.8.0
+    initializer : scalar, optional
+        The starting value for the sum. See `~numpy.ufunc.reduce` for details.
+
+        .. versionadded:: 1.15.0
 
     Returns
     -------
@@ -579,10 +604,15 @@ def nansum(a, axis=None, dtype=None, out=None, keepdims=np._NoValue):
 
     """
     a, mask = _replace_nan(a, 0)
-    return np.sum(a, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+
+    if initializer is not np._NoValue:
+        initializer, _ = _replace_nan(initializer, 0)
+
+    return np.sum(a, axis=axis, dtype=dtype, out=out, keepdims=keepdims,
+                  initializer=initializer)
 
 
-def nanprod(a, axis=None, dtype=None, out=None, keepdims=np._NoValue):
+def nanprod(a, axis=None, dtype=None, out=None, keepdims=np._NoValue, initializer=np._NoValue):
     """
     Return the product of array elements over a given axis treating Not a
     Numbers (NaNs) as ones.
@@ -616,6 +646,10 @@ def nanprod(a, axis=None, dtype=None, out=None, keepdims=np._NoValue):
         If True, the axes which are reduced are left in the result as
         dimensions with size one. With this option, the result will
         broadcast correctly against the original `arr`.
+    initializer : scalar, optional
+        The starting value for the product. See `~numpy.ufunc.reduce` for details.
+
+        .. versionadded:: 1.15.0
 
     Returns
     -------
@@ -644,7 +678,12 @@ def nanprod(a, axis=None, dtype=None, out=None, keepdims=np._NoValue):
 
     """
     a, mask = _replace_nan(a, 1)
-    return np.prod(a, axis=axis, dtype=dtype, out=out, keepdims=keepdims)
+
+    if initializer is not np._NoValue:
+        initializer, _ = _replace_nan(initializer, 1)
+
+    return np.prod(a, axis=axis, dtype=dtype, out=out, keepdims=keepdims,
+                   initializer=initializer)
 
 
 def nancumsum(a, axis=None, dtype=None, out=None):
