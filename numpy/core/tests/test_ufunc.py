@@ -957,15 +957,14 @@ class TestUfunc(object):
         assert_equal(np.minimum.reduce([], initializer=np.inf), np.inf)
         assert_equal(np.maximum.reduce([], initializer=-np.inf), -np.inf)
 
-        # Rendom tests
+        # Random tests
         assert_equal(np.minimum.reduce([5], initializer=4), 4)
         assert_equal(np.maximum.reduce([4], initializer=5), 5)
+        assert_equal(np.maximum.reduce([5], initializer=4), 5)
+        assert_equal(np.minimum.reduce([4], initializer=5), 4)
 
-        with assert_raises(ValueError):
-            np.minimum.reduce([])
-
-        with assert_raises(ValueError):
-            np.minimum.reduce([], initializer=None)
+        assert_raises(ValueError, np.minimum.reduce, [])
+        assert_raises(ValueError, np.minimum.reduce, [], initializer=None)
 
     def test_identityless_reduction_nonreorderable(self):
         a = np.array([[8.0, 2.0, 2.0], [1.0, 0.5, 0.25]])

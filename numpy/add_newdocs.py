@@ -5846,7 +5846,7 @@ add_newdoc('numpy.core', 'ufunc', ('reduce',
     initializer : scalar, optional
         The value with which to start the reduction.
         Defaults to the `~numpy.ufunc.identity` of the ufunc.
-        If ``None`` is given, then the first element of the reduction is used,
+        If explicitly given as ``None``, the first element of the reduction is used,
         and an error is thrown if the reduction is empty. If ``a.dtype`` is
         ``object``, then the initializer is _only_ used if reduction is empty.
         
