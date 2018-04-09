@@ -31,104 +31,70 @@ platform_skip = pytest.mark.skipif(xfail_complex_tests,
 
 
 class TestCexp(object):
-    def test_simple(self):
-        check = check_complex_value
-        f = np.exp
+    @pytest.mark.parametrize('x1, y1, x2, y2', [
+        (1, 0, np.exp(1), 0),
+        (0, 1, np.cos(1), np.sin(1)),
+        (1, 1, np.exp(1) * np.cos(1), np.exp(1) * np.sin(1))
+    ])
+    def test_simple(self, x1, y1, x2, y2):
+        check_complex_value(np.exp, x1, y1, x2, y2, False)
 
-        yield check, f, 1, 0, np.exp(1), 0, False
-        yield check, f, 0, 1, np.cos(1), np.sin(1), False
-
-        ref = np.exp(1) * complex(np.cos(1), np.sin(1))
-        yield check, f, 1, 1, ref.real, ref.imag, False
-
+    # C99: Section G 6.3.1
     @platform_skip
-    def test_special_values(self):
-        # C99: Section G 6.3.1
-
-        check = check_complex_value
-        f = np.exp
-
+    @pytest.mark.parametrize('x1, y1, x2, y2, exact', [
         # cexp(+-0 + 0i) is 1 + 0i
-        yield check, f, np.PZERO, 0, 1, 0, False
-        yield check, f, np.NZERO, 0, 1, 0, False
+        (np.PZERO, 0, 1, 0, False),
+        (np.NZERO, 0, 1, 0, False),
 
         # cexp(x + infi) is nan + nani for finite x and raises 'invalid' FPU
         # exception
-        yield check, f,  1, np.inf, np.nan, np.nan
-        yield check, f, -1, np.inf, np.nan, np.nan
-        yield check, f,  0, np.inf, np.nan, np.nan
+        (1, np.inf, np.nan, np.nan, True),
+        (-1, np.inf, np.nan, np.nan, True),
+        (0, np.inf, np.nan, np.nan, True),
 
         # cexp(inf + 0i) is inf + 0i
-        yield check, f,  np.inf, 0, np.inf, 0
+        (np.inf, 0, np.inf, 0, True),
 
         # cexp(-inf + yi) is +0 * (cos(y) + i sin(y)) for finite y
-        yield check, f,  -np.inf, 1, np.PZERO, np.PZERO
-        yield check, f,  -np.inf, 0.75 * np.pi, np.NZERO, np.PZERO
+        (-np.inf, 1, np.PZERO, np.PZERO, True),
+        (-np.inf, 0.75 * np.pi, np.NZERO, np.PZERO, True),
 
         # cexp(inf + yi) is +inf * (cos(y) + i sin(y)) for finite y
-        yield check, f,  np.inf, 1, np.inf, np.inf
-        yield check, f,  np.inf, 0.75 * np.pi, -np.inf, np.inf
-
-        # cexp(-inf + inf i) is +-0 +- 0i (signs unspecified)
-        def _check_ninf_inf(dummy):
-            msgform = "cexp(-inf, inf) is (%f, %f), expected (+-0, +-0)"
-            with np.errstate(invalid='ignore'):
-                z = f(np.array(complex(-np.inf, np.inf)))
-                if z.real != 0 or z.imag != 0:
-                    raise AssertionError(msgform % (z.real, z.imag))
-
-        yield _check_ninf_inf, None
-
-        # cexp(inf + inf i) is +-inf + NaNi and raised invalid FPU ex.
-        def _check_inf_inf(dummy):
-            msgform = "cexp(inf, inf) is (%f, %f), expected (+-inf, nan)"
-            with np.errstate(invalid='ignore'):
-                z = f(np.array(complex(np.inf, np.inf)))
-                if not np.isinf(z.real) or not np.isnan(z.imag):
-                    raise AssertionError(msgform % (z.real, z.imag))
-
-        yield _check_inf_inf, None
-
-        # cexp(-inf + nan i) is +-0 +- 0i
-        def _check_ninf_nan(dummy):
-            msgform = "cexp(-inf, nan) is (%f, %f), expected (+-0, +-0)"
-            with np.errstate(invalid='ignore'):
-                z = f(np.array(complex(-np.inf, np.nan)))
-                if z.real != 0 or z.imag != 0:
-                    raise AssertionError(msgform % (z.real, z.imag))
-
-        yield _check_ninf_nan, None
-
-        # cexp(inf + nan i) is +-inf + nan
-        def _check_inf_nan(dummy):
-            msgform = "cexp(-inf, nan) is (%f, %f), expected (+-inf, nan)"
-            with np.errstate(invalid='ignore'):
-                z = f(np.array(complex(np.inf, np.nan)))
-                if not np.isinf(z.real) or not np.isnan(z.imag):
-                    raise AssertionError(msgform % (z.real, z.imag))
-
-        yield _check_inf_nan, None
+        (np.inf, 1, np.inf, np.inf, True),
+        (np.inf, 0.75 * np.pi, -np.inf, np.inf, True),
 
         # cexp(nan + yi) is nan + nani for y != 0 (optional: raises invalid FPU
         # ex)
-        yield check, f, np.nan, 1, np.nan, np.nan
-        yield check, f, np.nan, -1, np.nan, np.nan
-
-        yield check, f, np.nan,  np.inf, np.nan, np.nan
-        yield check, f, np.nan, -np.inf, np.nan, np.nan
+        (np.nan, 1, np.nan, np.nan, True),
+        (np.nan, -1, np.nan, np.nan, True),
+        (np.nan, np.inf, np.nan, np.nan, True),
+        (np.nan, -np.inf, np.nan, np.nan, True),
 
         # cexp(nan + nani) is nan + nani
-        yield check, f, np.nan, np.nan, np.nan, np.nan
+        (np.nan, np.nan, np.nan, np.nan, True),
 
-    # TODO This can be xfail when the generator functions are got rid of.
-    @pytest.mark.skip(reason="cexp(nan + 0I) is wrong on most platforms")
-    def test_special_values2(self):
+        # cexp(nan + 0i) is nan + 0i
         # XXX: most implementations get it wrong here (including glibc <= 2.10)
         # cexp(nan + 0i) is nan + 0i
-        check = check_complex_value
-        f = np.exp
+        # TODO This can be xfail when the generator functions are got rid of.
+        pytest.mark.skip(reason="cexp(nan + 0I) is wrong on most platforms")((np.nan, 0, np.nan, 0, True)),
+    ])
+    def test_special_values(self, x1, y1, x2, y2, exact):
+        check_complex_value(np.exp, x1, y1, x2, y2, exact)
 
-        check(f, np.nan, 0, np.nan, 0)
+    def test_special_ninf_nan(self):
+        msgform = "cexp(-inf, nan) is (%f, %f), expected (+-0, +-0)"
+        with np.errstate(invalid='ignore'):
+            z = np.exp(np.array(complex(-np.inf, np.nan)))
+            if z.real != 0 or z.imag != 0:
+                raise AssertionError(msgform % (z.real, z.imag))
+
+    def test_special_pinf_nan(self):
+        msgform = "cexp(-inf, nan) is (%f, %f), expected (+-inf, nan)"
+        with np.errstate(invalid='ignore'):
+            z = np.exp(np.array(complex(np.inf, np.nan)))
+            if not np.isinf(z.real) or not np.isnan(z.imag):
+                raise AssertionError(msgform % (z.real, z.imag))
 
 class TestClog(object):
     def test_simple(self):
