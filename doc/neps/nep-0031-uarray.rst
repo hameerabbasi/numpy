@@ -172,8 +172,10 @@ The only change this NEP proposes at its acceptance, is to make ``unumpy`` the
 officially recommended way to override NumPy. ``unumpy`` will remain a separate
 repository/package (which we propose to vendor to avoid a hard dependency, and
 use the separate ``unumpy`` package only if it is installed) rather than depend
-on for the time being), and will be developed primarily with the input of
-duck-array authors and secondarily, custom dtype authors, via the usual
+on for the time being). In concrete terms, ``numpy.overridable`` becomes an
+alias for ``unumpy``, if available with a fallback to the a vendored version if
+not. ``uarray`` and ``unumpy`` and will be developed primarily with the input
+of duck-array authors and secondarily, custom dtype authors, via the usual
 GitHub workflow. There are a few reasons for this:
 
 * Faster iteration in the case of bugs or issues.
@@ -232,6 +234,11 @@ part of it. This is to ease the creation of new duck-arrays, by providing
 default implementations of many functions that can be easily expressed in
 terms of others, as well as a repository of utility functions that help in the
 implementation of duck-arrays that most duck-arrays would require.
+
+It also allows one to override functions in a manner which
+``__array_function__`` simply cannot, such as overriding ``np.einsum`` with the
+version from the ``opt_einsum`` package, or Intel MKL overriding FFT, BLAS
+or ``ufunc`` objects.
 
 The last benefit is a clear way to coerce to a given backend (via the
 ``coerce`` keyword in ``ua.set_backend``), and a protocol
