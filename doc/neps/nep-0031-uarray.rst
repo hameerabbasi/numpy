@@ -252,7 +252,7 @@ you would import it as ``np`` for familiarity. However, there may be situations
 where one wishes to mix NumPy and the overrides, and there are a few ways to do
 this, depending on the user's style::
 
-    import numpy.overridable as unumpy
+    from numpy import overridable as unumpy
     import numpy as np
 
 or::
