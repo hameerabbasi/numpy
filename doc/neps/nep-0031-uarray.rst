@@ -92,17 +92,17 @@ If all backends are exhausted, a ``ua.BackendNotImplementedError`` is raised.
 
 Backends can be registered for permanent use if required.
 
-Defining overridable methods
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Defining overridable multimethods
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-To define an overridable method, one needs a few things:
+To define an overridable function (a multimethod), one needs a few things:
 
 1. A dispatcher that returns an iterable of ``ua.Dispatchable`` objects.
 2. A reverse dispatcher that replaces dispatchable values with the supplied
    ones.
 3. A domain.
 4. Optionally, a default implementation, which can be provided in terms of
-   other overridable methods.
+   other multimethods.
 
 As an example, consider the following::
 
@@ -184,6 +184,29 @@ GitHub workflow. There are a few reasons for this:
   In simple terms, bugs in ``unumpy`` mean that ``numpy`` remains
   unaffected.
 
+Duck-array coercion
+~~~~~~~~~~~~~~~~~~~
+
+There are inherent problems about returning objects that are not NumPy arrays
+from ``numpy.array`` or ``numpy.asarray``, particularly in the context of C/C++
+or Cython code that may get an object with a different memory layout than the
+one it expects. However, we believe this problem may apply not only to these
+two functions but all functions that return NumPy arrays. For this reason,
+overrides are opt-in for the user, by using the submodule ``numpy.overridable``
+rather than ``numpy``. NumPy will continue to work unaffected by anything in
+``numpy.overridable``.
+
+If the user wishes to obtain a NumPy array, there are two ways of doing it:
+
+1. Use ``numpy.asarray`` (the non-overridable version).
+2. Use ``numpy.overridable.asarray`` with the NumPy backend set and coercion
+   enabled::
+
+    import numpy.overridable as np
+
+    with ua.set_backend(np):
+        x = np.asarray(...)
+
 Advantanges of ``unumpy`` over other solutions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -261,7 +284,7 @@ Existing and potential consumers of alternative arrays
 
 * Dask: https://dask.org/
 * scikit-learn: https://scikit-learn.org/
-* Xarray: https://xarray.pydata.org/
+* xarray: https://xarray.pydata.org/
 * TensorLy: http://tensorly.org/
 
 Existing alternate dtype implementations
