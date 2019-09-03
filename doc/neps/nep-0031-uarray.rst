@@ -65,6 +65,26 @@ Detailed description
 ``uarray`` Primer
 ^^^^^^^^^^^^^^^^^
 
+``unumpy`` is the interface that defines a set of overridable functions
+(multimethods) compatible with the numpy API. To do this, it uses the ``uarray``
+library. ``uarray`` is a general purpose tool for creating multimethods that
+dispatch to one of multiple different possible backend implementations. In this
+sense, it is similar to the ``__array_function__`` protocol but with the key
+difference that the backend is explicitly installed by the end-user and not
+coupled into the array type.
+
+Decoupling the backend from the array type gives much more flexibility to end-users and
+backend authors. For example, it is possible to:
+
+* override functions not taking arrays as arguments
+* create backends out of source from the array type
+* install multiple backends for the same array type
+
+This decoupling also means that ``uarray`` is not constrained to dispatching
+over array-like types. The backend is free to inspect the entire set of function
+arguments to determine if it can implement the function e.g. ``dtype`` parameter
+dispatching.
+
 Defining backends
 ~~~~~~~~~~~~~~~~~
 
