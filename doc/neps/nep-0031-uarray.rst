@@ -57,17 +57,79 @@ to what SciPy decided to do for making ``scipy.fft`` overridable (see `[10]`_).
 Detailed description
 --------------------
 
+**Note:** *This section will not attempt to go into too much detail about
+``uarray``, that is the purpose of the ``uarray`` documentation.* `[1]`_
+*However, the NumPy community will have input into the design of
+``uarray``, via the issue tracker.*
+
 ``uarray`` Primer
 ^^^^^^^^^^^^^^^^^
 
 Defining backends
 ~~~~~~~~~~~~~~~~~
 
-**Note:** *This section will not attempt to explain the specifics or the
-mechanism of ``uarray``, that is explained in the ``uarray`` documentation.*
-`[1]`_ *However, the NumPy community will have input into the design of
-``uarray``, and any backward-incompatible changes will be discussed on the
-mailing list.*
+``uarray`` consists of two main protocols: ``__ua_convert__`` and
+``__ua_function__``, called in that order, along with ``__ua_domain__``, which
+is a string defining the domain of the backend. If any of the protocols return
+``NotImplemented``, we fall back to the next backend.
+
+``__ua_convert__`` is for conversion and coercion. It has the signature
+``(dispatchables, coerce)``, where ``dispatchables`` is an iterable of
+``ua.Dispatchable`` objects and ``coerce`` is a boolean indicating whether or
+not to force the conversion. ``ua.Dispatchable`` is a simple class consisting
+of three simple values: ``type``, ``value``, and ``coercible``.
+``__ua_convert__`` returns an iterable of the converted values, or
+``NotImplemented`` in the case of failure. Returning ``NotImplemented``
+here will cause ``uarray`` to move to the next available backend.
+
+``__ua_function__`` has the signature ``(func, args, kwargs)`` and defines
+the actual implementation of the function. It recieves the function and its
+arguments. Returning ``NotImplemented`` will cause a move to the default
+implementation of the function if one exists, and failing that, the next
+backend.
+
+If all backends are exhausted, a ``ua.BackendNotImplementedError`` is raised.
+
+Backends can be registered for permanent use if required.
+
+Defining overridable methods
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To define an overridable method, one needs a few things:
+
+1. A dispatcher that returns an iterable of ``ua.Dispatchable`` objects.
+2. A reverse dispatcher that replaces dispatchable values with the supplied
+   ones.
+3. A domain.
+4. Optionally, a default implementation, which can be provided in terms of
+   other overridable methods.
+
+As an example, consider the following::
+
+    import uarray as ua
+
+    def full_argreplacer(args, kwargs, dispatchables):
+        def full(shape, fill_value, dtype=None, order='C'):
+            return (shape, fill_value), dict(
+                dtype=dispatchables[0],
+                order=order
+            )
+
+        return full(*args, **kwargs)
+
+    @ua.create_multimethod(full_argreplacer, domain="numpy")
+    def full(shape, fill_value, dtype=None, order='C'):
+        return (ua.Dispatchable(dtype, np.dtype),)
+
+A large set of examples can be found in the ``unumpy`` repository, `[8]`_.
+This simple act of overriding callables allows us to override:
+
+* Methods
+* Properties, via ``fget`` and ``fset``
+* Entire objects, via ``__get__``.
+
+Using overrides
+~~~~~~~~~~~~~~~
 
 The way we propose the overrides will be used by end users is::
 
@@ -132,9 +194,6 @@ changes. For example:
 
 * ``ufunc`` objects can be overridden via their ``__call__``, ``reduce`` and
   other methods.
-* ``dtype`` objects can be overridden via the dispatch/backend mechanism, going
-  as far as to allow ``np.float32`` et. al. to be overridden by overriding
-  ``__get__``.
 * Other functions can be overridden in a similar fashion.
 * ``np.asduckarray`` goes away, and becomes ``np.asarray`` with a backend set.
 * The same holds for array creation functions such as ``np.zeros``,
@@ -151,13 +210,16 @@ default implementations of many functions that can be easily expressed in
 terms of others, as well as a repository of utility functions that help in the
 implementation of duck-arrays that most duck-arrays would require.
 
-The last benefit is a clear way to coerce to a given backend, and a protocol
+The last benefit is a clear way to coerce to a given backend (via the
+``coerce`` keyword in ``ua.set_backend``), and a protocol
 for coercing not only arrays, but also ``dtype`` objects and ``ufunc`` objects
 with similar ones from other libraries. This is due to the existence of actual,
 third party dtype packages, and their desire to blend into the NumPy ecosystem
 (see `[6]`_). This is a separate issue compared to the C-level dtype redesign
 proposed in `[7]`_, it's about allowing third-party dtype implementations to
-work with NumPy, much like third-party array implementations.
+work with NumPy, much like third-party array implementations. These can provide
+features such as, for example, units, jagged arrays or other such features that
+are outside the scope of NumPy.
 
 Mixing NumPy and ``unumpy`` in the same file
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
