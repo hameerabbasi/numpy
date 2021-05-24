@@ -1644,6 +1644,10 @@ _ArrayComplex_co = NDArray[Union[bool_, integer[Any], floating[Any], complexfloa
 _ArrayNumber_co = NDArray[Union[bool_, number[Any]]]
 _ArrayTD64_co = NDArray[Union[bool_, integer[Any], timedelta64]]
 
+# `builtins.PyCapsule` unfortunately lacks annotations as of the moment;
+# use `Any` as a stopgap measure
+_PyCapsule = Any
+
 class _SupportsItem(Protocol[_T_co]):
     def item(self, __args: Any) -> _T_co: ...
 
@@ -2809,6 +2813,8 @@ class ndarray(_ArrayOrScalarCommon, Generic[_ShapeType, _DType_co]):
     def __ior__(self: NDArray[object_], other: Any) -> NDArray[object_]: ...
     @overload
     def __ior__(self: NDArray[_ScalarType], other: _RecursiveSequence) -> NDArray[_ScalarType]: ...
+    def __dlpack__(self: NDArray[number[Any]], *, stream: None = ...) -> _PyCapsule: ...
+    def __dlpack_device__(self) -> Tuple[L[1], L[0]]: ...
 
     # Keep `dtype` at the bottom to avoid name conflicts with `np.dtype`
     @property
