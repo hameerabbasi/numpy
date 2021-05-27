@@ -1634,6 +1634,7 @@ _BufferType = Union[ndarray, bytes, bytearray, memoryview]
 
 _T = TypeVar("_T")
 _T_co = TypeVar("_T_co", covariant=True)
+_T_contra = TypeVar("_T_contra", contravariant=True)
 _2Tuple = Tuple[_T, _T]
 _Casting = L["no", "equiv", "safe", "same_kind", "unsafe"]
 
@@ -3660,3 +3661,8 @@ class broadcast:
     def __next__(self) -> Tuple[Any, ...]: ...
     def __iter__(self: _T) -> _T: ...
     def reset(self) -> None: ...
+
+class _SupportsDLPack(Protocol[_T_contra]):
+    def __dlpack__(self, *, stream: Optional[int] = ...) -> _PyCapsule: ...
+
+def from_dlpack(__obj: _SupportsDLPack[None]) -> NDArray[Any]: ...
