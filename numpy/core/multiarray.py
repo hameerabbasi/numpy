@@ -33,8 +33,8 @@ __all__ = [
     'count_nonzero', 'c_einsum', 'datetime_as_string', 'datetime_data',
     'digitize', 'dot', 'dragon4_positional', 'dragon4_scientific', 'dtype',
     'empty', 'empty_like', 'error', 'flagsobj', 'flatiter', 'format_longfloat',
-    'frombuffer', 'fromfile', 'fromiter', 'fromstring', 'inner',
-    'interp', 'interp_complex', 'is_busday', 'lexsort',
+    'frombuffer', 'from_dlpack', 'fromfile', 'fromiter', 'fromstring',
+    'inner', 'interp', 'interp_complex', 'is_busday', 'lexsort',
     'matmul', 'may_share_memory', 'min_scalar_type', 'ndarray', 'nditer',
     'nested_iters', 'normalize_axis_index', 'packbits',
     'promote_types', 'putmask', 'ravel_multi_index', 'result_type', 'scalar',
@@ -57,6 +57,7 @@ asfortranarray.__module__ = 'numpy'
 datetime_data.__module__ = 'numpy'
 empty.__module__ = 'numpy'
 frombuffer.__module__ = 'numpy'
+from_dlpack.__module__ = 'numpy'
 fromfile.__module__ = 'numpy'
 fromiter.__module__ = 'numpy'
 frompyfunc.__module__ = 'numpy'

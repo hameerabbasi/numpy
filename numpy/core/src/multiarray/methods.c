@@ -30,7 +30,7 @@
 #include "methods.h"
 #include "alloc.h"
 
-#include "common/dlpack/dlpack.h"
+#include "common/npy_dlpack.h"
 
 
 /* NpyArg_ParseKeywords
@@ -2537,8 +2537,6 @@ array_round(PyArrayObject *self, PyObject *args, PyObject *kwds)
     }
 }
 
-
-
 static PyObject *
 array_setflags(PyArrayObject *self, PyObject *args, PyObject *kwds)
 {
@@ -2696,32 +2694,17 @@ array_complex(PyArrayObject *self, PyObject *NPY_UNUSED(args))
     return c;
 }
 
-#define NPY_DLPACK_CAPSULE_NAME "dltensor"
-#define NPY_DLPACK_USED_CAPSULE_NAME "used_dltensor"
 
-static void array_dlpack_capsule_deleter(PyObject *self)
-{
-    if (!PyCapsule_IsValid(self, NPY_DLPACK_CAPSULE_NAME)) {
-        if (!PyCapsule_IsValid(self, NPY_DLPACK_USED_CAPSULE_NAME)) {
-            PyErr_SetString(PyExc_RuntimeError, "Invalid capsule name.");
-        }
-        return;
-    }
-
-    DLManagedTensor *managed = 
-        (DLManagedTensor *)PyCapsule_GetPointer(self, NPY_DLPACK_CAPSULE_NAME);
-    managed->deleter(managed);
-}
-
-static void array_dlpack_deleter(DLManagedTensor *self)
+static void
+array_dlpack_deleter(DLManagedTensor *self)
 {
     PyArrayObject *array = (PyArrayObject *)self->manager_ctx;
     // This will also free the strides as it's one allocation.
     PyMem_Free(self->dl_tensor.shape);
     PyMem_Free(self);
-
-    PyArray_XDECREF(array);
+    Py_XDECREF(array);
 }
+
 
 static PyObject *
 array_dlpack(PyArrayObject *self,
@@ -2838,13 +2821,23 @@ array_dlpack(PyArrayObject *self,
     }
     
     // the capsule holds a reference
-    PyArray_INCREF(self);
+    Py_INCREF(self);
     return capsule;
 }
 
 static PyObject *
-array_dlpack_device(PyArrayObject *NPY_UNUSED(self), PyObject *NPY_UNUSED(args))
+array_dlpack_device(PyArrayObject *self, PyObject *NPY_UNUSED(args))
 {
+    PyObject *base = PyArray_BASE(self);
+    if (PyCapsule_IsValid(base, NPY_DLPACK_INTERNAL_CAPSULE_NAME)) {
+        DLManagedTensor *managed = PyCapsule_GetPointer(base,
+                NPY_DLPACK_INTERNAL_CAPSULE_NAME);
+        if (managed == NULL) {
+            return NULL;
+        }
+        return Py_BuildValue("ii", managed->dl_tensor.device.device_type,
+                managed->dl_tensor.device.device_id);
+    }
     return Py_BuildValue("ii", kDLCPU, 0);
 }
 
